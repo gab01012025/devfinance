@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevFinance - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
+  <main class="p-6 max-w-4xl mx-auto">
+    <!-- Toggle Dark Mode -->
+    <div class="flex justify-end mb-4">
+      <button id="toggleDark" class="bg-gray-200 dark:bg-gray-700 text-black dark:text-white px-4 py-2 rounded">
+        Toggle Dark Mode
+      </button>
+    </div>
+
+    <h1 class="text-2xl font-bold mb-6">Overview</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+        <h2 class="text-lg font-semibold mb-2">Income</h2>
+        <p id="income" class="text-2xl font-bold text-green-500 dark:text-green-400">$0.00</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+        <h2 class="text-lg font-semibold mb-2">Balance</h2>
+        <p id="balance" class="text-2xl font-bold text-blue-500 dark:text-blue-400">$0.00</p>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+      <h2 class="text-xl font-semibold mb-4">Add Transaction</h2>
+      <form id="transactionForm" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <input type="text" id="description" placeholder="Description" 
+               class="p-3 rounded border bg-white dark:bg-gray-700 text-black dark:text-white" required />
+        <input type="number" id="amount" placeholder="Amount" 
+               class="p-3 rounded border bg-white dark:bg-gray-700 text-black dark:text-white" required />
+        <select id="type" class="p-3 rounded border bg-white dark:bg-gray-700 text-black dark:text-white">
+          <option value="Income">Income</option>
+          <option value="Expense">Expense</option>
+        </select>
+        <select id="category" class="p-3 rounded border bg-white dark:bg-gray-700 text-black dark:text-white">
+          <option value="Food">Food</option>
+          <option value="Transport">Transport</option>
+          <option value="Entertainment">Entertainment</option>
+          <option value="Health">Health</option>
+          <option value="Other">Other</option>
+        </select>
+        <button type="submit" 
+                class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded col-span-1 md:col-span-5 w-full">
+          Add
+        </button>
+      </form>
+      <p id="message" class="mt-4 text-sm font-medium hidden text-green-500 dark:text-green-400">Transaction added!</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+      <h2 class="text-xl font-semibold mb-4">Transactions</h2>
+      <ul id="transactions" class="space-y-3">
+        <!-- Transactions will be injected here -->
+      </ul>
+    </div>
+
+    <!-- 📊 Small Chart Section -->
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow w-full md:w-1/2 mx-auto">
+      <h2 class="text-lg font-semibold mb-4 text-center">Expense Chart</h2>
+      <div style="height: 200px;">
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <!-- Chart Script -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const toggleDark = document.getElementById("toggleDark");
+    toggleDark.addEventListener("click", () => {
+      document.documentElement.classList.toggle("dark");
+    });
+
+    const form = document.getElementById("transactionForm");
+    const message = document.getElementById("message");
+    const transactionsList = document.getElementById("transactions");
+    const incomeDisplay = document.getElementById("income");
+    const balanceDisplay = document.getElementById("balance");
+
+    const categoryData = {
+      Food: 0,
+      Transport: 0,
+      Entertainment: 0,
+      Health: 0,
+      Other: 0
+    };
+
+    const ctx = document.getElementById('categoryChart');
+    const categoryChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(categoryData),
+        datasets: [{
+          label: 'Expenses by Category',
+          data: Object.values(categoryData),
+          backgroundColor: ['#f87171', '#fbbf24', '#60a5fa', '#34d399', '#a78bfa'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 2,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+
+    let incomeTotal = 0;
+    let balanceTotal = 0;
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const description = document.getElementById("description").value;
+      const amount = parseFloat(document.getElementById("amount").value);
+      const type = document.getElementById("type").value;
+      const category = document.getElementById("category").value;
+
+      if (!description || isNaN(amount)) return;
+
+      if (type === "Income") {
+        incomeTotal += amount;
+        balanceTotal += amount;
+      } else {
+        balanceTotal -= amount;
+        categoryData[category] += amount;
+        updateChart();
+      }
+
+      incomeDisplay.textContent = `$${incomeTotal.toFixed(2)}`;
+      balanceDisplay.textContent = `$${balanceTotal.toFixed(2)}`;
+
+      const li = document.createElement("li");
+      li.className = "flex justify-between items-center bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded";
+      li.innerHTML = `
+        <span>${description} (${category})</span>
+        <span class="${type === 'Income' ? 'text-green-500' : 'text-red-500'}">
+          ${type === 'Income' ? '+' : '-'}$${amount.toFixed(2)}
+        </span>
+      `;
+      transactionsList.prepend(li);
+
+      message.classList.remove("hidden");
+      setTimeout(() => message.classList.add("hidden"), 2000);
+      form.reset();
+    });
+
+    function updateChart() {
+      categoryChart.data.datasets[0].data = Object.values(categoryData);
+      categoryChart.update();
+    }
+  </script>
+</body>
+</html>
